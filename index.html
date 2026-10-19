@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f8f7f2" />
+    <meta
+      name="description"
+      content="Thoughtfully raised, healthy chickens from Halal Chicken Farm."
+    />
+    <title>Halal Chicken Farm — Raised with care</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#26352c",
+              leaf: "#48644a",
+              cream: "#f8f7f2",
+              clay: "#ba724e",
+              mist: "#e9eee6",
+            },
+            fontFamily: {
+              display: ["Georgia", "serif"],
+              sans: ["Arial", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; background: #f8f7f2; color: #26352c; font-family: Arial, sans-serif; }
+      button, input, select, textarea { font: inherit; }
+      .grain { background-image: radial-gradient(#26352c0b .7px, transparent .7px); background-size: 7px 7px; }
+      .hero-glow { background: radial-gradient(ellipse at 70% 42%, #dce7d7 0%, #dce7d7 23%, transparent 60%); }
+      .card-image { transition: transform .55s cubic-bezier(.2,.7,.25,1); }
+      .chicken-card:hover .card-image { transform: scale(1.055); }
+      .fade-up { animation: fadeUp .6s ease both; }
+      @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel">
+      const { useEffect, useMemo, useState } = React;
+      const startingChickens = [
+        { id: "4-brown", name: "Golden Brown", breed: "Farmyard mix", age: 4, price: 18, stock: 12, image: "4months/brown Chicken.jpg", description: "A lively, healthy young bird raised on a natural, balanced diet.", featured: true },
+        { id: "4-plymouth", name: "Plymouth Rock", breed: "Plymouth Rock", age: 4, price: 22, stock: 8, image: "4months/Plymouth Rock.jpg", description: "A friendly, hardy breed known for its calm temperament and beautiful markings.", featured: true },
+        { id: "4-farmyard", name: "Young Farmyard", breed: "Farmyard mix", age: 4, price: 16, stock: 15, image: "4months/chicken.jpg", description: "Well cared for and growing strong in our open, clean farm environment.", featured: false },
+        { id: "5-black", name: "Midnight Black", breed: "Black chicken", age: 5, price: 25, stock: 6, image: "5months/black chicken.jpg", description: "A striking black-feathered chicken with a gentle nature and sturdy build.", featured: true },
+        { id: "5-brown", name: "Chestnut Hen", breed: "Farmyard mix", age: 5, price: 21, stock: 10, image: "5months/brown chicken.jpg", description: "A robust, well-socialized bird, carefully raised with room to roam.", featured: false },
+        { id: "5-plymouth", name: "Plymouth Rock", breed: "Plymouth Rock", age: 5, price: 27, stock: 7, image: "5months/Plymouth rock.jpg", description: "A confident, easygoing bird from a much-loved heritage breed.", featured: true },
+        { id: "6-brown", name: "Mature Brown", breed: "Farmyard mix", age: 6, price: 29, stock: 9, image: "6months/brown chicken.jpg", description: "A mature, healthy hen raised with daily care and plenty of fresh air.", featured: false },
+        { id: "6-plymouth", name: "Plymouth Rock Hen", breed: "Plymouth Rock", age: 6, price: 34, stock: 5, image: "6months/Plymouth rock.jpg", description: "A mature heritage hen, admired for her calm temperament and hardiness.", featured: true },
+        { id: "6-white", name: "White Feather", breed: "White chicken", age: 7, price: 31, stock: 4, image: "6months/White chicken.jpg", description: "A bright, healthy mature bird with a clean white coat and gentle character.", featured: false },
+      ];
+      const categories = [
+        { label: "All chickens", value: "all" },
+        { label: "4 months", value: "4" },
+        { label: "5 months", value: "5" },
+        { label: "6 months & older", value: "6+" },
+      ];
+      const money = (value) => `$${Number(value).toFixed(2)}`;
+
+      function App() {
+        const [chickens, setChickens] = useState(() => {
+          try {
+            const saved = localStorage.getItem("halal-chicken-inventory");
+            return saved ? JSON.parse(saved) : startingChickens;
+          } catch (error) {
+            console.error("Could not load saved chicken inventory:", error);
+            return startingChickens;
+          }
+        });
+        const [category, setCategory] = useState("all");
+        const [search, setSearch] = useState("");
+        const [selected, setSelected] = useState(null);
+        const [adminOpen, setAdminOpen] = useState(false);
+        const [editing, setEditing] = useState(null);
+        const [notice, setNotice] = useState("");
+
+        useEffect(() => {
+          try {
+            localStorage.setItem("halal-chicken-inventory", JSON.stringify(chickens));
+          } catch (error) {
+            console.error("Could not save chicken inventory:", error);
+            setNotice("Your changes could not be saved in this browser.");
+          }
+        }, [chickens]);
+
+        const visibleChickens = useMemo(() => chickens.filter((chicken) => {
+          const matchesCategory = category === "all" || (category === "6+" ? chicken.age >= 6 : chicken.age === Number(category));
+          const matchesSearch = `${chicken.name} ${chicken.breed} ${chicken.description}`.toLowerCase().includes(search.toLowerCase());
+          return matchesCategory && matchesSearch;
+        }), [chickens, category, search]);
+
+        function saveChicken(event) {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          const entry = {
+            id: editing?.id || `chicken-${Date.now()}`,
+            name: form.get("name").trim(),
+            breed: form.get("breed").trim(),
+            age: Number(form.get("age")),
+            price: Number(form.get("price")),
+            stock: Number(form.get("stock")),
+            image: form.get("image").trim(),
+            description: form.get("description").trim(),
+            featured: form.get("featured") === "on",
+          };
+          if (!entry.name || !entry.breed || !entry.image || !entry.description || !Number.isFinite(entry.price) || entry.price < 0 || !Number.isInteger(entry.stock) || entry.stock < 0 || !Number.isFinite(entry.age) || entry.age < 1) {
+            setNotice("Please enter valid chicken details. Price and stock cannot be negative.");
+            return;
+          }
+          setChickens((current) => editing?.id ? current.map((item) => item.id === entry.id ? entry : item) : [...current, entry]);
+          setEditing(null);
+          setNotice(editing?.id ? "Chicken listing updated." : "Chicken listing added.");
+        }
+
+        function deleteChicken(id) {
+          if (!window.confirm("Remove this chicken listing?")) return;
+          setChickens((current) => current.filter((chicken) => chicken.id !== id));
+          setNotice("Chicken listing removed.");
+        }
+
+        const inputClass = "w-full rounded-xl border border-[#dedfd6] bg-white px-3.5 py-3 text-sm text-ink outline-none transition focus:border-leaf focus:ring-2 focus:ring-leaf/10";
+
+        return (
+          <div className="grain min-h-screen">
+            <header className="relative z-10 border-b border-ink/10 bg-cream/90">
+              <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+                <a href="#" className="flex items-center gap-3" aria-label="Halal Chicken Farm home">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-leaf text-xl text-white">✳</span>
+                  <span><span className="block font-display text-lg font-bold leading-tight">Halal Chicken</span><span className="text-[10px] uppercase tracking-[.2em] text-leaf">Farm · Raised with care</span></span>
+                </a>
+                <nav className="hidden items-center gap-8 text-sm text-ink/75 md:flex">
+                  <a className="transition hover:text-clay" href="#our-story">Our farm</a>
+                  <a className="transition hover:text-clay" href="#chickens">Our chickens</a>
+                  <a className="transition hover:text-clay" href="#care">Our promise</a>
+                </nav>
+                <a href="#chickens" className="rounded-full bg-leaf px-5 py-2.5 text-xs font-bold text-white transition hover:bg-ink">Explore chickens <span aria-hidden="true">↗</span></a>
+              </div>
+            </header>
+
+            <main>
+              <section id="our-story" className="hero-glow relative overflow-hidden">
+                <div className="mx-auto grid min-h-[590px] max-w-7xl items-center gap-8 px-5 py-16 sm:px-8 md:grid-cols-[.95fr_1.05fr] md:py-20">
+                  <div className="fade-up relative z-[1]">
+                    <div className="mb-6 flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-leaf"><span className="h-px w-8 bg-leaf"></span> Good lives. Good chickens.</div>
+                    <h1 className="max-w-xl font-display text-5xl leading-[1.07] tracking-[-.04em] sm:text-6xl lg:text-7xl">Raised with care.<br/><span className="text-clay">Ready for home.</span></h1>
+                    <p className="mt-6 max-w-md text-base leading-7 text-ink/65">Healthy, happy chickens from our family farm. Browse by age and find a bird that feels right for you.</p>
+                    <div className="mt-8 flex flex-wrap items-center gap-4">
+                      <a href="#chickens" className="rounded-full bg-ink px-6 py-3.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-leaf">Meet our chickens <span className="ml-2">→</span></a>
+                      <span className="text-xs text-ink/55">Thoughtfully raised, every day.</span>
+                    </div>
+                    <div className="mt-12 flex gap-8 border-t border-ink/10 pt-5">
+                      <div><p className="font-display text-2xl font-bold">100%</p><p className="mt-1 text-[11px] uppercase tracking-wider text-ink/55">Farm raised</p></div>
+                      <div><p className="font-display text-2xl font-bold">Daily</p><p className="mt-1 text-[11px] uppercase tracking-wider text-ink/55">Care & attention</p></div>
+                      <div><p className="font-display text-2xl font-bold">Healthy</p><p className="mt-1 text-[11px] uppercase tracking-wider text-ink/55">Happy birds</p></div>
+                    </div>
+                  </div>
+                  <div className="relative mx-auto w-full max-w-xl md:pl-5">
+                    <div className="absolute -right-2 top-3 z-[1] rounded-full bg-clay px-4 py-3 text-center text-white shadow-lg sm:right-1"><span className="block text-[9px] uppercase tracking-widest">Raised on</span><span className="font-display text-sm italic">our family farm</span></div>
+                    <div className="absolute -bottom-4 -left-1 h-[75%] w-[75%] rounded-[46%_54%_43%_57%/48%_40%_60%_52%] bg-[#dae4d5] sm:left-3"></div>
+                    <img src="5months/Plymouth rock.jpg" alt="A healthy Plymouth Rock chicken raised on our farm" className="relative z-0 h-[340px] w-full rounded-[48%_52%_44%_56%/40%_40%_60%_60%] object-cover shadow-xl sm:h-[440px]" />
+                    <div className="absolute -bottom-3 right-4 rounded-2xl border border-ink/5 bg-white px-4 py-3 shadow-lg sm:right-0"><span className="mr-2 text-clay">✦</span><span className="text-xs font-semibold">A little room to roam</span></div>
+                  </div>
+                </div>
+              </section>
+
+              <section id="care" className="border-y border-ink/5 bg-mist/65">
+                <div className="mx-auto grid max-w-7xl gap-7 px-5 py-8 sm:grid-cols-3 sm:px-8">
+                  {[["01", "Raised with care", "Healthy birds looked after from day one."], ["02", "Room to grow", "Clean spaces and fresh air, every day."], ["03", "Here to help", "We are happy to answer your questions."]].map(([number, title, body]) => (
+                    <div key={number} className="flex items-start gap-4"><span className="font-display text-sm italic text-clay">{number}</span><div><h2 className="text-sm font-bold">{title}</h2><p className="mt-1 text-xs leading-5 text-ink/60">{body}</p></div></div>
+                  ))}
+                </div>
+              </section>
+
+              <section id="chickens" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-24">
+                <div className="flex flex-col justify-between gap-7 sm:flex-row sm:items-end">
+                  <div><p className="text-xs font-bold uppercase tracking-[.2em] text-clay">From our farm to you</p><h2 className="mt-3 font-display text-4xl tracking-tight sm:text-5xl">Meet the chickens</h2><p className="mt-3 max-w-md text-sm leading-6 text-ink/60">Browse our available birds by age. Every one is raised with the same care.</p></div>
+                  <label className="relative block w-full sm:max-w-xs"><span className="sr-only">Search chickens</span><span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/40">⌕</span><input className="w-full rounded-full border border-ink/10 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-leaf" placeholder="Search breed or chicken..." value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+                </div>
+
+                <div className="mt-9 flex flex-wrap gap-2" role="group" aria-label="Filter chickens by age">
+                  {categories.map((item) => <button key={item.value} onClick={() => setCategory(item.value)} className={`rounded-full px-4 py-2.5 text-xs font-semibold transition ${category === item.value ? "bg-leaf text-white" : "bg-white text-ink/65 hover:bg-mist"}`}>{item.label}</button>)}
+                </div>
+
+                <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {visibleChickens.map((chicken, index) => (
+                    <article key={chicken.id} className="chicken-card fade-up overflow-hidden rounded-2xl border border-ink/[.07] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-ink/[.07]" style={{ animationDelay: `${index * 60}ms` }}>
+                      <button className="group relative block h-60 w-full overflow-hidden bg-mist text-left" onClick={() => setSelected(chicken)} aria-label={`View ${chicken.name} details`}>
+                        <img className="card-image h-full w-full object-cover" src={chicken.image} alt={`${chicken.breed} chicken, ${chicken.age} months old`} />
+                        <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-leaf">{chicken.age} months</span>
+                        {chicken.featured && <span className="absolute right-4 top-4 rounded-full bg-clay px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white">Farm favorite</span>}
+                      </button>
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-clay">{chicken.breed}</p><h3 className="mt-1 font-display text-2xl">{chicken.name}</h3></div><p className="font-display text-xl font-bold">{money(chicken.price)}</p></div>
+                        <p className="mt-3 line-clamp-2 min-h-10 text-xs leading-5 text-ink/60">{chicken.description}</p>
+                        <div className="mt-5 flex items-center justify-between border-t border-ink/[.07] pt-4">
+                          <span className={`flex items-center gap-2 text-[11px] font-semibold ${chicken.stock > 0 ? "text-leaf" : "text-clay"}`}><span className={`h-1.5 w-1.5 rounded-full ${chicken.stock > 0 ? "bg-leaf" : "bg-clay"}`}></span>{chicken.stock > 0 ? `${chicken.stock} available` : "Currently unavailable"}</span>
+                          <button onClick={() => setSelected(chicken)} className="text-xs font-bold text-ink transition hover:text-clay">View details <span aria-hidden="true">↗</span></button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                {visibleChickens.length === 0 && <div className="rounded-2xl border border-dashed border-ink/20 py-16 text-center"><p className="font-display text-2xl">No chickens found</p><p className="mt-2 text-sm text-ink/60">Try another age or search term.</p></div>}
+              </section>
+
+              <section className="bg-ink text-white">
+                <div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-5 py-14 sm:flex-row sm:items-center sm:px-8">
+                  <div><p className="text-xs font-bold uppercase tracking-[.2em] text-[#d49a77]">A little more about us</p><h2 className="mt-3 font-display text-3xl sm:text-4xl">Good care makes all the difference.</h2><p className="mt-3 max-w-lg text-sm leading-6 text-white/65">We believe healthy, happy chickens start with thoughtful care. Get in touch and we’ll help you find the right bird.</p></div>
+                  <a href="mailto:hello@halalchickenfarm.com" className="shrink-0 self-start rounded-full border border-white/30 px-6 py-3 text-sm font-semibold transition hover:bg-white hover:text-ink sm:self-center">Say hello <span className="ml-2">↗</span></a>
+                </div>
+              </section>
+            </main>
+
+            <footer className="border-t border-ink/10 bg-cream">
+              <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-6 text-xs text-ink/55 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                <p>© {new Date().getFullYear()} Halal Chicken Farm. Raised with care.</p>
+                <button onClick={() => { setAdminOpen(true); setEditing(null); setNotice(""); }} className="self-start font-semibold text-leaf transition hover:text-clay sm:self-auto">Farm admin <span aria-hidden="true">↗</span></button>
+              </div>
+            </footer>
+
+            {selected && <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/55 p-4 backdrop-blur-sm" onClick={() => setSelected(null)}>
+              <section role="dialog" aria-modal="true" aria-labelledby="detail-title" className="relative grid max-h-[90vh] w-full max-w-2xl overflow-auto rounded-3xl bg-cream shadow-2xl sm:grid-cols-2" onClick={(event) => event.stopPropagation()}>
+                <button className="absolute right-4 top-4 z-[1] flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-lg" onClick={() => setSelected(null)} aria-label="Close details">×</button>
+                <img src={selected.image} alt={`${selected.breed} chicken`} className="h-64 w-full object-cover sm:h-full sm:min-h-[400px]" />
+                <div className="p-7 sm:p-8"><p className="text-xs font-bold uppercase tracking-[.15em] text-clay">{selected.breed}</p><h2 id="detail-title" className="mt-2 font-display text-3xl">{selected.name}</h2><p className="mt-2 text-sm text-ink/55">{selected.age} months old</p><p className="mt-6 text-sm leading-6 text-ink/70">{selected.description}</p><div className="mt-6 space-y-3 border-y border-ink/10 py-5 text-sm"><div className="flex justify-between"><span className="text-ink/55">Age</span><span className="font-semibold">{selected.age} months</span></div><div className="flex justify-between"><span className="text-ink/55">Breed</span><span className="font-semibold">{selected.breed}</span></div><div className="flex justify-between"><span className="text-ink/55">Availability</span><span className="font-semibold">{selected.stock > 0 ? `${selected.stock} available` : "Currently unavailable"}</span></div></div><p className="mt-5 font-display text-3xl font-bold">{money(selected.price)} <span className="font-sans text-xs font-normal text-ink/50">per chicken</span></p><p className="mt-4 text-xs leading-5 text-ink/50">Interested? Get in touch with our farm and we’ll be happy to help.</p><a href="mailto:hello@halalchickenfarm.com" className="mt-5 inline-flex rounded-full bg-leaf px-5 py-3 text-sm font-bold text-white transition hover:bg-ink">Contact the farm ↗</a></div>
+              </section>
+            </div>}
+
+            {adminOpen && <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/60 p-3 backdrop-blur-sm sm:p-6" onClick={() => { setAdminOpen(false); setEditing(null); }}>
+              <section role="dialog" aria-modal="true" aria-labelledby="admin-title" className="relative flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-cream shadow-2xl" onClick={(event) => event.stopPropagation()}>
+                <div className="flex items-center justify-between border-b border-ink/10 px-5 py-4 sm:px-7"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-clay">Farm management</p><h2 id="admin-title" className="mt-1 font-display text-2xl">Chicken listings</h2></div><button className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-xl" onClick={() => { setAdminOpen(false); setEditing(null); }} aria-label="Close admin">×</button></div>
+                <div className="grid min-h-0 overflow-auto md:grid-cols-[1.1fr_.9fr]">
+                  <div className="p-5 sm:p-7">
+                    <div className="mb-4 flex items-center justify-between"><p className="text-sm font-semibold">{chickens.length} listings · {chickens.reduce((total, chicken) => total + chicken.stock, 0)} chickens in stock</p><button onClick={() => setEditing({})} className="rounded-full bg-leaf px-4 py-2 text-xs font-bold text-white transition hover:bg-ink">+ Add chicken</button></div>
+                    {notice && <p role="status" className="mb-3 rounded-xl bg-mist px-3 py-2 text-xs text-leaf">{notice}</p>}
+                    <div className="space-y-2">
+                      {chickens.map((chicken) => <div key={chicken.id} className="flex items-center gap-3 rounded-xl border border-ink/[.08] bg-white p-3"><img src={chicken.image} alt="" className="h-12 w-12 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{chicken.name}</p><p className="text-[11px] text-ink/55">{chicken.age} months · {chicken.stock} in stock · {money(chicken.price)}</p></div><button onClick={() => { setEditing(chicken); setNotice(""); }} className="px-2 text-xs font-semibold text-leaf hover:text-clay">Edit</button><button onClick={() => deleteChicken(chicken.id)} aria-label={`Delete ${chicken.name}`} className="px-1 text-lg text-ink/40 hover:text-red-700">×</button></div>)}
+                      {chickens.length === 0 && <p className="py-8 text-center text-sm text-ink/55">No listings yet. Add your first chicken.</p>}
+                    </div>
+                  </div>
+                  <div className="border-t border-ink/10 bg-white/55 p-5 md:border-l md:border-t-0 sm:p-7">
+                    {editing ? <form key={editing.id || "new"} onSubmit={saveChicken} className="space-y-3">
+                      <div className="mb-4 flex items-center justify-between"><h3 className="font-display text-xl">{editing.id ? "Edit listing" : "Add a chicken"}</h3><button type="button" onClick={() => setEditing(null)} className="text-xs text-ink/55 hover:text-ink">Cancel</button></div>
+                      <label className="block text-xs font-semibold">Chicken name<input className={`${inputClass} mt-1.5`} name="name" required maxLength="60" defaultValue={editing.name || ""} placeholder="e.g. Golden Brown" /></label>
+                      <label className="block text-xs font-semibold">Breed<input className={`${inputClass} mt-1.5`} name="breed" required maxLength="60" defaultValue={editing.breed || ""} placeholder="e.g. Plymouth Rock" /></label>
+                      <div className="grid grid-cols-3 gap-2"><label className="text-xs font-semibold">Age (months)<input className={`${inputClass} mt-1.5`} name="age" type="number" min="1" max="120" required defaultValue={editing.age || 4} /></label><label className="text-xs font-semibold">Price ($)<input className={`${inputClass} mt-1.5`} name="price" type="number" min="0" step="0.01" required defaultValue={editing.price ?? ""} /></label><label className="text-xs font-semibold">Stock<input className={`${inputClass} mt-1.5`} name="stock" type="number" min="0" step="1" required defaultValue={editing.stock ?? 0} /></label></div>
+                      <label className="block text-xs font-semibold">Image path<input className={`${inputClass} mt-1.5`} name="image" required defaultValue={editing.image || ""} placeholder="4months/chicken.jpg" /></label>
+                      <label className="block text-xs font-semibold">Description<textarea className={`${inputClass} mt-1.5 resize-y`} name="description" rows="3" required maxLength="300" defaultValue={editing.description || ""} placeholder="Tell customers about this chicken..." /></label>
+                      <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" name="featured" defaultChecked={Boolean(editing.featured)} className="accent-leaf" /> Show as a farm favorite</label>
+                      <button type="submit" className="w-full rounded-full bg-leaf py-3 text-sm font-bold text-white transition hover:bg-ink">{editing.id ? "Save changes" : "Add listing"}</button>
+                    </form> : <div className="flex h-full min-h-48 flex-col items-center justify-center text-center"><span className="text-3xl text-clay">✳</span><p className="mt-3 font-display text-xl">Your farm, your listings.</p><p className="mt-2 max-w-xs text-xs leading-5 text-ink/55">Add a chicken or select an existing listing to update its details and inventory.</p></div>}
+                  </div>
+                </div>
+                <p className="border-t border-ink/10 px-5 py-3 text-[10px] text-ink/45 sm:px-7">Changes are saved in this browser on this device.</p>
+              </section>
+            </div>}
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>
